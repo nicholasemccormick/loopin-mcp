@@ -17,7 +17,7 @@ import analyticsRouter  from './routes/analytics';
 import reviewRouter     from './routes/review';
 
 const app  = express();
-const port = process.env.PORT || 3002;
+const port = parseInt(process.env.PORT || '3002', 10);
 const apiKey = process.env['API_KEY_SECRET'];
 
 app.use(express.json());
@@ -60,7 +60,7 @@ app.get('/openapi.json', (_req: Request, res: Response) => {
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────
-app.listen(Number(port), () => {
-  process.stderr.write(`LoopIn API running on port ${port}\n`);
+app.listen(port, '0.0.0.0', () => {
+  console.error(`mcp-loopin running on port ${port}`);
   startExpiryChecker();
 });
