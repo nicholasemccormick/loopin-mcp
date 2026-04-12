@@ -1,0 +1,272 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "LoopIn API",
+    "version": "1.0.0",
+    "description": "Human-in-the-loop interrupt API for AI agents. Allows agents to pause execution, request human approval, and resume based on the human's decision.",
+    "contact": {
+      "name": "Colossal API",
+      "url": "https://colossal-api.com"
+    },
+    "license": {
+      "name": "MIT"
+    }
+  },
+  "servers": [
+    { "url": "http://localhost:3002", "description": "Local development" }
+  ],
+  "paths": {
+    "/interrupts": {
+      "post": {
+        "summary": "Create a new interrupt request",
+        "operationId": "createInterrupt",
+        "tags": ["Interrupts"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateInterruptBody" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Interrupt created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CreateInterruptResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/interrupts/pending/{userId}": {
+      "get": {
+        "summary": "List pending interrupts for a user",
+        "operationId": "listPendingInterrupts",
+        "tags": ["Interrupts"],
+        "parameters": [
+          { "name": "userId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of pending interrupts",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Interrupt" } }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/interrupts/{interruptId}": {
+      "get": {
+        "summary": "Get interrupt status",
+        "operationId": "getInterrupt",
+        "tags": ["Interrupts"],
+        "parameters": [
+          { "name": "interruptId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Interrupt details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Interrupt" }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "summary": "Cancel a pending interrupt",
+        "operationId": "cancelInterrupt",
+        "tags": ["Interrupts"],
+        "parameters": [
+          { "name": "interruptId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Interrupt cancelled" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/interrupts/{interruptId}/decide": {
+      "post": {
+        "summary": "Submit a decision on an interrupt",
+        "operationId": "decideInterrupt",
+        "tags": ["Interrupts"],
+        "parameters": [
+          { "name": "interruptId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/DecideBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Decision recorded",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DecideResponse" }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/analytics/{userId}": {
+      "get": {
+        "summary": "Get interrupt analytics for a user",
+        "operationId": "getAnalytics",
+        "tags": ["Analytics"],
+        "parameters": [
+          { "name": "userId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Analytics summary",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Analytics" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "operationId": "healthCheck",
+        "tags": ["System"],
+        "responses": {
+          "200": { "description": "Service is healthy" }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Urgency": {
+        "type": "string",
+        "enum": ["low", "medium", "high"]
+      },
+      "InterruptStatus": {
+        "type": "string",
+        "enum": ["pending", "approved", "rejected", "expired", "cancelled"]
+      },
+      "Decision": {
+        "type": "string",
+        "enum": ["approved", "rejected"]
+      },
+      "Interrupt": {
+        "type": "object",
+        "required": ["id", "agentId", "userId", "action", "context", "urgency", "status", "createdAt", "expiresAt", "reviewUrl"],
+        "properties": {
+          "id":             { "type": "string", "format": "uuid" },
+          "agentId":        { "type": "string" },
+          "userId":         { "type": "string" },
+          "action":         { "type": "string" },
+          "context":        { "type": "object" },
+          "urgency":        { "$ref": "#/components/schemas/Urgency" },
+          "status":         { "$ref": "#/components/schemas/InterruptStatus" },
+          "createdAt":      { "type": "string", "format": "date-time" },
+          "expiresAt":      { "type": "string", "format": "date-time" },
+          "decidedAt":      { "type": "string", "format": "date-time" },
+          "decision":       { "$ref": "#/components/schemas/Decision" },
+          "reason":         { "type": "string" },
+          "modifiedParams": { "type": "object" },
+          "callbackUrl":    { "type": "string", "format": "uri" },
+          "reviewUrl":      { "type": "string", "format": "uri" }
+        }
+      },
+      "CreateInterruptBody": {
+        "type": "object",
+        "required": ["agentId", "userId", "action", "context"],
+        "properties": {
+          "agentId":     { "type": "string" },
+          "userId":      { "type": "string" },
+          "action":      { "type": "string" },
+          "context":     { "type": "object" },
+          "urgency":     { "$ref": "#/components/schemas/Urgency" },
+          "expiresIn":   { "type": "integer", "default": 3600, "description": "Seconds until expiry" },
+          "callbackUrl": { "type": "string", "format": "uri" }
+        }
+      },
+      "CreateInterruptResponse": {
+        "type": "object",
+        "properties": {
+          "interruptId": { "type": "string", "format": "uuid" },
+          "status":      { "type": "string", "example": "pending" },
+          "expiresAt":   { "type": "string", "format": "date-time" },
+          "reviewUrl":   { "type": "string", "format": "uri" }
+        }
+      },
+      "DecideBody": {
+        "type": "object",
+        "required": ["decision"],
+        "properties": {
+          "decision":       { "$ref": "#/components/schemas/Decision" },
+          "reason":         { "type": "string" },
+          "modifiedParams": { "type": "object" }
+        }
+      },
+      "DecideResponse": {
+        "type": "object",
+        "properties": {
+          "interruptId": { "type": "string", "format": "uuid" },
+          "status":      { "type": "string", "example": "resolved" },
+          "decision":    { "$ref": "#/components/schemas/Decision" },
+          "decidedAt":   { "type": "string", "format": "date-time" }
+        }
+      },
+      "Analytics": {
+        "type": "object",
+        "properties": {
+          "userId":            { "type": "string" },
+          "totalInterrupts":   { "type": "integer" },
+          "approvalRate":      { "type": "number", "nullable": true },
+          "avgResponseTimeMs": { "type": "integer", "nullable": true },
+          "byStatus":          { "type": "object" },
+          "byUrgency":         { "type": "object" },
+          "topActionTypes":    {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "action": { "type": "string" },
+                "count":  { "type": "integer" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad request",
+        "content": { "application/json": { "schema": { "type": "object", "properties": { "error": { "type": "string" } } } } }
+      },
+      "NotFound": {
+        "description": "Not found",
+        "content": { "application/json": { "schema": { "type": "object", "properties": { "error": { "type": "string" } } } } }
+      },
+      "Conflict": {
+        "description": "Conflict",
+        "content": { "application/json": { "schema": { "type": "object", "properties": { "error": { "type": "string" } } } } }
+      }
+    }
+  }
+}
