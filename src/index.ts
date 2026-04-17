@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// v1.0.1 - force redeploy
 // ─────────────────────────────────────────────────────────────────────────────
 // LoopIn API — Human-in-the-loop interrupt service for AI agents
 //
